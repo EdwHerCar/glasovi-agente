@@ -21,14 +21,6 @@ build/
 knowledge/*
 !knowledge/.gitkeep
 
-# Archivos generados por Claude Code durante onboarding
-agent/
-config/
-tests/
-requirements.txt
-Dockerfile
-docker-compose.yml
-
 # Session state
 config/session.yaml
 
@@ -43,8 +35,5 @@ Thumbs.db
 *.swo
 *~
 
-# Docker
-.dockerignore
-
-# Node (si se usa para Claude Code)
+# Node
 node_modules/
