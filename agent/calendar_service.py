@@ -78,6 +78,15 @@ def verificar_disponibilidad(fecha: str, hora: str, duracion_minutos: int = 30) 
                 "mensaje": f"Ese horario está fuera de nuestra atención. {'Sábados atendemos de 9:00am a 2:00pm.' if dia_semana == 5 else 'De lunes a viernes atendemos de 9:00am a 7:00pm.'}"
             }
 
+        # Verificar que no caiga en horario de comida del doctor (4:00pm a 5:30pm)
+        comida_inicio = inicio.replace(hour=16, minute=0, second=0, microsecond=0)
+        comida_fin = inicio.replace(hour=17, minute=30, second=0, microsecond=0)
+        if inicio < comida_fin and fin > comida_inicio:
+            return {
+                "disponible": False,
+                "mensaje": "El horario de 4:00pm a 5:30pm está reservado. ¿Le ofrezco un horario antes de las 4:00pm o a partir de las 5:30pm?"
+            }
+
         servicio = _obtener_servicio()
 
         # Consultar eventos existentes en ese slot
