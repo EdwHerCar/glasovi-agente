@@ -51,7 +51,7 @@ async def webhook_verificacion(request: Request):
     """Verificación GET del webhook (requerido por Meta Cloud API, no-op para Twilio)."""
     resultado = await proveedor.validar_webhook(request)
     if resultado is not None:
-        return PlainTextResponse(str(resultado))
+        return resultado
     return {"status": "ok"}
 
 
