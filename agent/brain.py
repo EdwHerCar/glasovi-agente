@@ -76,7 +76,7 @@ TOOLS = [
 ]
 
 
-def _ejecutar_herramienta(nombre: str, parametros: dict) -> str:
+async def _ejecutar_herramienta(nombre: str, parametros: dict) -> str:
     """Ejecuta la herramienta solicitada por Claude y retorna el resultado como string."""
     try:
         if nombre == "verificar_disponibilidad":
@@ -88,7 +88,7 @@ def _ejecutar_herramienta(nombre: str, parametros: dict) -> str:
             )
         elif nombre == "crear_cita":
             from agent.calendar_service import crear_cita
-            resultado = crear_cita(
+            resultado = await crear_cita(
                 nombre=parametros["nombre"],
                 telefono=parametros["telefono"],
                 servicio=parametros["servicio"],
@@ -186,7 +186,7 @@ async def generar_respuesta(mensaje: str, historial: list[dict], telefono: str =
                             parametros["telefono"] = telefono
 
                         logger.info(f"Ejecutando herramienta: {block.name}({parametros})")
-                        resultado = _ejecutar_herramienta(block.name, parametros)
+                        resultado = await _ejecutar_herramienta(block.name, parametros)
 
                         resultados_herramientas.append({
                             "type": "tool_result",

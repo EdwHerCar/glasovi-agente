@@ -9,6 +9,8 @@ Usa una cuenta de servicio de Google Cloud para autenticarse.
 import os
 import json
 import logging
+import base64
+import httpx
 from datetime import datetime, timedelta
 from zoneinfo import ZoneInfo
 
@@ -17,6 +19,8 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 
 logger = logging.getLogger("agentkit")
+
+NOTIFICAR_A = os.getenv("NOTIFICAR_ADMIN", "+522411008494")
 
 CALENDAR_ID = os.getenv("GOOGLE_CALENDAR_ID", "plazaglasovi@gmail.com")
 TIMEZONE = "America/Mexico_City"
@@ -107,7 +111,7 @@ def verificar_disponibilidad(fecha: str, hora: str, duracion_minutos: int = 30) 
         return {"disponible": False, "mensaje": "No pude verificar la disponibilidad en este momento."}
 
 
-def crear_cita(nombre: str, telefono: str, servicio: str, fecha: str, hora: str, duracion_minutos: int = 30) -> dict:
+async def crear_cita(nombre: str, telefono: str, servicio: str, fecha: str, hora: str, duracion_minutos: int = 30) -> dict:
     """
     Crea una cita en Google Calendar.
 
@@ -153,6 +157,7 @@ def crear_cita(nombre: str, telefono: str, servicio: str, fecha: str, hora: str,
         evento_id = resultado.get("id", "")
 
         logger.info(f"Cita creada: {nombre} — {servicio} — {fecha} {hora}")
+        await _notificar_admin(nombre, servicio, fecha, hora, telefono)
         return {
             "exito": True,
             "mensaje": f"Cita confirmada para {nombre} el {_formato_fecha(fecha)} a las {hora} para {servicio}.",
@@ -204,6 +209,45 @@ def listar_citas_proximas(dias: int = 7) -> list[dict]:
     except Exception as e:
         logger.error(f"Error listando citas: {e}")
         return []
+
+
+async def _notificar_admin(nombre: str, servicio: str, fecha: str, hora: str, telefono: str):
+    """Envía notificación WhatsApp al administrador cuando se agenda una cita."""
+    account_sid = os.getenv("TWILIO_ACCOUNT_SID")
+    auth_token = os.getenv("TWILIO_AUTH_TOKEN")
+    from_number = os.getenv("TWILIO_PHONE_NUMBER")
+
+    if not all([account_sid, auth_token, from_number]):
+        logger.warning("Credenciales Twilio no configuradas — no se envió notificación al admin")
+        return
+
+    mensaje = (
+        f"📅 *Nueva cita agendada*\n\n"
+        f"👤 Paciente: {nombre}\n"
+        f"📞 WhatsApp: {telefono}\n"
+        f"🏥 Servicio: {servicio}\n"
+        f"📆 Fecha: {_formato_fecha(fecha)}\n"
+        f"🕐 Hora: {hora}\n\n"
+        f"_Agendado por Glasovi via WhatsApp_"
+    )
+
+    url = f"https://api.twilio.com/2010-04-01/Accounts/{account_sid}/Messages.json"
+    auth = base64.b64encode(f"{account_sid}:{auth_token}".encode()).decode()
+
+    async with httpx.AsyncClient() as client:
+        r = await client.post(
+            url,
+            headers={"Authorization": f"Basic {auth}"},
+            data={
+                "From": f"whatsapp:{from_number}",
+                "To": f"whatsapp:{NOTIFICAR_A}",
+                "Body": mensaje,
+            }
+        )
+        if r.status_code == 201:
+            logger.info(f"Notificación enviada al admin ({NOTIFICAR_A})")
+        else:
+            logger.error(f"Error enviando notificación al admin: {r.status_code} — {r.text}")
 
 
 def _formato_fecha(fecha: str) -> str:
